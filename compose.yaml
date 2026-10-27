@@ -1,0 +1,48 @@
+
+services:
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - chamilo_network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  chamilo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CHAMILO_VERSION: "3.0.1"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    volumes:
+      - ./chamilo-app.env:/var/www/chamilo/.env
+      - chamilo_config:/var/www/chamilo/config
+      - chamilo_var:/var/www/chamilo/var
+    networks:
+      - chamilo_network
+
+networks:
+  chamilo_network:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+  chamilo_config:
+  chamilo_var:
